@@ -8,14 +8,14 @@ import shutil
 import os
 import warnings
 
-# Suprimir warnings do Seaborn sobre paletas
-warnings.filterwarnings("ignore", category=UserWarning)
+# Suppress warnings
+warnings.filterwarnings("ignore")
 
 def coletar_dados_covid():
     url = "https://raw.githubusercontent.com/wcota/covid19br/master/cases-brazil-states.csv"
     
     try:
-        print("📥 Baixando dados atualizados de COVID-19...")
+        print("📊 Coletando dados de COVID-19...")
         response = requests.get(url, timeout=10)
         response.raise_for_status()
         
@@ -49,41 +49,35 @@ def coletar_dados_covid():
         print(f"❌ Erro ao coletar dados: {e}")
         return None, None, None
 
-def gerar_visualizacoes(dados, pasta_destino):
+def gerar_visualizacoes(dados, output_dir):
     try:
         print("\n🎨 Gerando visualizações...")
-        plt.figure(figsize=(18, 14))
+        plt.figure(figsize=(18, 12))
         sns.set_theme(style="whitegrid")
-        plt.rcParams['font.family'] = 'DejaVu Sans'
-        plt.rcParams['axes.titlesize'] = 14
-        
-        # Configuração comum para os gráficos
-        def configurar_grafico(ax, titulo):
-            ax.set_title(titulo, pad=15)
-            ax.set_xlabel('')
-            ax.set_ylabel('')
-            ax.bar_label(ax.containers[0], fmt='%.0f', padding=5, fontsize=10)
         
         # Gráfico 1: Casos Confirmados
         plt.subplot(2, 2, 1)
-        ax1 = sns.barplot(x='Casos_Confirmados', y='Estado',
+        ax1 = sns.barplot(x='Casos_Confirmados', y='Estado', 
                          data=dados.nlargest(10, 'Casos_Confirmados'),
                          palette="Blues_d", hue='Estado', legend=False)
-        configurar_grafico(ax1, 'Top 10 Estados - Casos Confirmados')
+        ax1.set_title('Top 10 Estados - Casos Confirmados', pad=15)
+        ax1.bar_label(ax1.containers[0], fmt='%.0f', padding=5)
         
         # Gráfico 2: Óbitos
         plt.subplot(2, 2, 2)
         ax2 = sns.barplot(x='Mortes', y='Estado',
                          data=dados.nlargest(10, 'Mortes'),
                          palette="Reds_d", hue='Estado', legend=False)
-        configurar_grafico(ax2, 'Top 10 Estados - Óbitos')
+        ax2.set_title('Top 10 Estados - Óbitos', pad=15)
+        ax2.bar_label(ax2.containers[0], fmt='%.0f', padding=5)
         
         # Gráfico 3: Taxa de Mortalidade
         plt.subplot(2, 2, 3)
         ax3 = sns.barplot(x='Taxa_Mortalidade', y='Estado',
                          data=dados.nlargest(10, 'Taxa_Mortalidade'),
                          palette="Purples_d", hue='Estado', legend=False)
-        configurar_grafico(ax3, 'Top 10 Estados - Taxa de Mortalidade (%)')
+        ax3.set_title('Top 10 Estados - Taxa de Mortalidade (%)', pad=15)
+        ax3.bar_label(ax3.containers[0], fmt='%.2f', padding=5)
         
         # Gráfico 4: Incidência
         plt.subplot(2, 2, 4)
@@ -91,20 +85,21 @@ def gerar_visualizacoes(dados, pasta_destino):
         ax4 = sns.barplot(x='Incidencia', y='Estado',
                          data=dados.nlargest(10, 'Incidencia'),
                          palette="Greens_d", hue='Estado', legend=False)
-        configurar_grafico(ax4, 'Top 10 Estados - Incidência (por 100k hab.)')
+        ax4.set_title('Top 10 Estados - Incidência (por 100k hab.)', pad=15)
+        ax4.bar_label(ax4.containers[0], fmt='%.1f', padding=5)
         
         plt.tight_layout()
-        output_file = os.path.join(pasta_destino, 'covid_estados.png')
+        output_file = os.path.join(output_dir, 'covid_estados.png')
         plt.savefig(output_file, dpi=300, bbox_inches='tight')
         plt.close()
         print(f"🖼️ Visualizações salvas em {output_file}")
         
     except Exception as e:
-        print(f"❌ Erro ao gerar visualizações: {e}")
+        print(f"❌ Erro ao gerar gráficos: {e}")
 
-def criar_dashboard_html(pasta_destino, data_str, melhor_estado, pior_estado):
+def criar_pagina_html(output_dir, dados, melhor_estado, pior_estado):
     try:
-        print("\n🛠️ Criando página HTML do dashboard...")
+        print("\n🛠️ Criando página HTML...")
         
         def formatar_numero(num):
             return f"{num:,.0f}".replace(",", ".")
@@ -112,27 +107,54 @@ def criar_dashboard_html(pasta_destino, data_str, melhor_estado, pior_estado):
         def formatar_taxa(taxa):
             return f"{taxa:.2f}".replace(".", ",")
         
-        data_formatada = f"{data_str[:4]}-{data_str[4:6]}-{data_str[6:8]}"
+        data_atual = datetime.now().strftime('%d/%m/%Y %H:%M')
         
         html = f"""<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard COVID-19 - {data_formatada}</title>
+    <title>Dashboard COVID-19</title>
     <style>
-        body {{ font-family: Arial, sans-serif; line-height: 1.6; max-width: 1200px; margin: 0 auto; padding: 20px; }}
-        h1 {{ color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }}
-        .destaque {{ background-color: #f8f9fa; padding: 15px; border-radius: 5px; }}
-        .melhor {{ color: #27ae60; font-weight: bold; }}
-        .pior {{ color: #e74c3c; font-weight: bold; }}
-        img {{ max-width: 100%; height: auto; margin-top: 20px; border: 1px solid #ddd; }}
+        body {{
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }}
+        h1 {{
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }}
+        .info-box {{
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }}
+        .melhor {{
+            color: #27ae60;
+            font-weight: bold;
+        }}
+        .pior {{
+            color: #e74c3c;
+            font-weight: bold;
+        }}
+        img {{
+            max-width: 100%;
+            height: auto;
+            margin-top: 20px;
+            border: 1px solid #ddd;
+        }}
     </style>
 </head>
 <body>
-    <h1>📊 Dashboard COVID-19 - {data_formatada}</h1>
+    <h1>📊 Dashboard COVID-19 - Brasil</h1>
     
-    <div class="destaque">
+    <div class="info-box">
+        <p>Data da última atualização: {data_atual}</p>
         <p>Estado com <span class="melhor">menor</span> taxa de mortalidade: 
         <strong>{melhor_estado['Estado']}</strong> ({formatar_taxa(melhor_estado['Taxa_Mortalidade'])}%)</p>
         
@@ -141,91 +163,40 @@ def criar_dashboard_html(pasta_destino, data_str, melhor_estado, pior_estado):
     </div>
     
     <img src="covid_estados.png" alt="Gráficos COVID-19">
-    
-    <p><a href="../index.html">↩ Voltar para o histórico</a></p>
 </body>
 </html>"""
         
-        with open(os.path.join(pasta_destino, 'index.html'), 'w', encoding='utf-8') as f:
+        with open(os.path.join(output_dir, 'index.html'), 'w', encoding='utf-8') as f:
             f.write(html)
             
-        print("✅ Página HTML criada com sucesso")
+        print("✅ Página HTML criada com sucesso!")
             
     except Exception as e:
         print(f"❌ Erro ao criar HTML: {e}")
 
-def criar_index_principal():
-    try:
-        print("\n📂 Gerando índice principal de dashboards...")
-        os.makedirs('docs', exist_ok=True)
-        
-        pastas = sorted([
-            p for p in os.listdir('docs')
-            if os.path.isdir(os.path.join('docs', p)) and p.isdigit()
-        ], reverse=True)[:10]  # Limitar aos 10 mais recentes
-
-        links = '\n'.join([
-            f'<li><a href="{p}/index.html">Dashboard {p[:4]}-{p[4:6]}-{p[6:]}</a></li>'
-            for p in pastas
-        ])
-
-        html = f"""<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Histórico de Dashboards COVID-19</title>
-    <style>
-        body {{ font-family: Arial, sans-serif; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 20px; }}
-        h1 {{ color: #2c3e50; }}
-        ul {{ list-style-type: none; padding: 0; }}
-        li {{ margin: 10px 0; }}
-        a {{ text-decoration: none; color: #3498db; }}
-        a:hover {{ text-decoration: underline; }}
-    </style>
-</head>
-<body>
-    <h1>📅 Histórico de Dashboards COVID-19</h1>
-    <ul>
-        {links}
-    </ul>
-    <p>Atualizado em {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
-</body>
-</html>"""
-
-        with open('docs/index.html', 'w', encoding='utf-8') as f:
-            f.write(html)
-            
-        # Criar arquivo .nojekyll
-        with open('docs/.nojekyll', 'w') as f:
-            pass
-            
-        print("✅ Índice principal atualizado")
-        
-    except Exception as e:
-        print(f"❌ Erro ao criar índice: {e}")
-
 def main():
-    print("\n🔁 Iniciando processo de atualização do dashboard...")
+    print("\n🚀 Iniciando processo de atualização do dashboard...")
     dados, melhor_estado, pior_estado = coletar_dados_covid()
     
     if dados is not None:
-        data_str = datetime.now().strftime('%Y%m%d')
-        pasta_destino = os.path.join('docs', data_str)
-        os.makedirs(pasta_destino, exist_ok=True)
-
-        # Gerar conteúdo do dashboard
-        gerar_visualizacoes(dados, pasta_destino)
-        criar_dashboard_html(pasta_destino, data_str, melhor_estado, pior_estado)
+        # Cria a pasta docs se não existir
+        os.makedirs('docs', exist_ok=True)
         
-        # Salvar dados em CSV
-        dados.to_csv(os.path.join(pasta_destino, f'dados_{data_str}.csv'),
-                     index=False, encoding='utf-8-sig')
+        # Gera os gráficos e a página HTML
+        gerar_visualizacoes(dados, 'docs')
+        criar_pagina_html('docs', dados, melhor_estado, pior_estado)
         
-        # Atualizar índice principal
-        criar_index_principal()
+        # Cria arquivos essenciais para GitHub Pages
+        with open('docs/.nojekyll', 'w') as f:
+            pass
+        with open('docs/CNAME', 'w') as f:
+            f.write('pedrohenriquetavaresdossantos.github.io')
         
-        print(f"\n🎉 Dashboard atualizado com sucesso! Acesse: docs/{data_str}/index.html")
+        # Salva os dados completos
+        dados.to_csv('docs/dados_completos.csv', index=False, encoding='utf-8-sig')
+        
+        print("\n🎉 Dashboard atualizado com sucesso!")
+        print("🔗 Acesse: https://pedrohenriquetavaresdossantos.github.io/covidBrasil/")
 
 if __name__ == "__main__":
     main()
