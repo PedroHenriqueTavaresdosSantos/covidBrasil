@@ -1,21 +1,22 @@
-name: Atualizar Dashboard COVID-19
+name: Atualizar Dados COVID-19
 
 on:
   schedule:
-    - cron: '0 12 * * *'  # Executa diariamente ao meio-dia UTC
+    - cron: '0 12 * * *'
   workflow_dispatch:
-  push:
-    branches:
-      - main
+
+permissions:
+  contents: write
 
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    
+ 
     steps:
     - uses: actions/checkout@v3
-    
+      with:
+        fetch-depth: 0
+        
     - name: Configurar Python
       uses: actions/setup-python@v4
       with:
@@ -24,7 +25,7 @@ jobs:
     - name: Instalar dependências
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install pandas matplotlib seaborn requests
         
     - name: Executar script
       run: python covid_dashboard.py
@@ -34,15 +35,8 @@ jobs:
         git config --global user.name "GitHub Actions"
         git config --global user.email "actions@github.com"
         
-    - name: Commitar alterações
+    - name: Commitar e publicar
       run: |
         git add .
-        git commit -m "📊 Atualização automática - $(date +'%d/%m/%Y')" || echo "Sem mudanças para commitar"
-        git push
-        
-    - name: Publicar no GitHub Pages
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./docs
-        keep_files: true
+        git commit -m "📊 Atualização automática - $(date +'%d/%m/%Y')" || echo "Sem mudanças"
+        git push 
